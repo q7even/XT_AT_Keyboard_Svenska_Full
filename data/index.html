@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<title>ESP32 XT/AT USB Tangentbord</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <h1>ESP32 XT/AT – USB–PS/2 Tangentbordsadapter</h1>
+  <p id="fwver">Firmware: (hämtar...)</p>
+</header>
+
+<section class="card">
+  <h2>WiFi-inställningar</h2>
+  <div class="row">
+    <label>Router SSID</label>
+    <input id="sta_ssid" placeholder="Ange SSID">
+  </div>
+
+  <div class="row">
+    <label>Lösenord</label>
+    <input id="sta_pass" type="password" placeholder="Lösenord">
+  </div>
+
+  <button onclick="saveWiFi()">Spara & anslut</button>
+
+  <p id="wifi_status"></p>
+</section>
+
+<section class="card">
+  <h2>XT/AT-läge</h2>
+  <select id="mode" onchange="saveMode()">
+    <option value="XT">XT (Set1)</option>
+    <option value="AT">AT (Set1 extended)</option>
+  </select>
+  <p>Läge styr hur scancode-formatet skickas.</p>
+</section>
+
+<section class="card">
+  <h2>Svenskt tangentbordstest</h2>
+  <p>Klicka på valfri tangent nedan för att skicka till XT/AT-utgången.</p>
+
+  <div id="kbd"></div>
+</section>
+
+<section class="card">
+  <h2>Keymap-redigerare</h2>
+  <p>Välj USB-tangent → mappa till XT/AT-scancode.</p>
+
+  <select id="usbKey"></select>
+  <input id="xtVal" placeholder="XT-kod (hex, t.ex 1C)">
+  <button onclick="applyMap()">Spara mappning</button>
+
+  <h3>Nuvarande mappning</h3>
+  <pre id="mapdump"></pre>
+</section>
+
+<section class="card">
+  <h2>Firmware</h2>
+  <button onclick="location.href='/update'">Öppna OTA-uppdatering</button>
+</section>
+
+<script src="script.js"></script>
+</body>
+</html>

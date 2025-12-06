@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Realtids Scancode-panel + Oscilloskop</title>
+<style>
+body{font-family:Arial;padding:12px;background:#f3f6fb}
+.container{max-width:1100px;margin:auto;display:grid;grid-template-columns:1fr 420px;gap:12px}
+.card{background:white;padding:16px;border-radius:8px}
+.log{height:220px;overflow:auto;border:1px solid #ddd;padding:8px;background:#fafafa}
+.controls{display:flex;gap:8px;margin-bottom:8px}
+.btn{padding:8px 12px;background:#007bff;color:white;border:none;border-radius:6px;cursor:pointer}
+.btn.gray{background:#666}
+canvas{width:100%;height:200px;border:1px solid #ddd;background:#fff}
+.small{font-size:0.9rem;color:#666}
+</style>
+</head>
+<body>
+<h2>Realtids Scancode-panel + Oscilloskop</h2>
+<div class="container">
+  <div class="card">
+    <div class="controls">
+      <button id="btnConnect" class="btn">Anslut WS</button>
+      <button id="btnDisconnect" class="btn gray">Koppla från</button>
+      <button id="btnDetect" class="btn">Automatisk detektion</button>
+      <button id="btnTestA" class="btn" style="background:#28a745">Skicka 'a'</button>
+    </div>
+
+    <div><canvas id="osc" width="800" height="180"></canvas></div>
+    <p class="small">Oscilloskop: visar clock & data (1 = hög). Klicka "Anslut WS" först.</p>
+
+    <h3>Logg</h3>
+    <div class="log" id="log"></div>
+  </div>
+
+  <div class="card">
+    <h3>Detektion resultat</h3>
+    <pre id="detectResult">Ingen körning ännu</pre>
+
+    <h3>Snabbkontroll</h3>
+    <div>
+      <button id="btnClearLog" class="btn gray">Rensa logg</button>
+    </div>
+
+    <h3>Senaste host->dev</h3>
+    <pre id="hostEcho">-</pre>
+  </div>
+</div>
+
+<script>
+let ws = null;
+let logEl = document.getElementById('log');
+let detectEl = document.getElementById('detectResult');
+let hostEchoEl = document.getElementById('hostEcho');
+let canvas = document.getElementById('osc');
+let ctx = canvas.getContext('2d');
+
+// simple ringbuffer for plotting
+const samples = [];
+const MAX_SAMPLES = 1500;
+
+// draw grid
+function drawGrid() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle = '#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.strokeStyle = '#eee';
+  for (let x=0;x<canvas.width;x+=40) {
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
+  }
+  ctx.strokeStyle = '#ddd';
+  for (let y=0;y<canvas.height;y+=20) {
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke();
+  }
+}
+
+// map sample to canvas
+function drawSamples() {
+  drawGrid();
+  if (samples.length < 2) return;
+  // two channels: clock (samples[].clk), data (samples[].data)
+  ctx.lineWidth = 1.5;
+  // draw clock (top)
+  ctx.strokeStyle = '#ff3b30';
+  ctx.beginPath();
+  for (let i=0;i<samples.length;i++) {
+    let x = canvas.width * i / MAX_SAMPLES;
+    let y = samples[i].clk ? 30 : 70;
+    if (i==0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+  // draw data (lower)
+  ctx.strokeStyle = '#007bff';
+  ctx.beginPath();
+  for (let i=0;i<samples.length;i++) {
+    let x = canvas.width * i / MAX_SAMPLES;
+    let y = samples[i].data ? 120 : 160;
+    if (i==0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+}
+
+// push new bit event (from WS)
+function pushBit(ts, clk, data) {
+  samples.push({ts:ts, clk:clk, data:data});
+  if (samples.length > MAX_SAMPLES) samples.shift();
+  drawSamples();
+}
+
+// log helper
+function log(s) {
+  const p = document.createElement('div');
+  p.innerText = new Date().toLocaleTimeString() + ' — ' + s;
+  logEl.prepend(p);
+}
+
+// WS connect/disconnect
+document.getElementById('btnConnect').onclick = () => {
+  if (ws) return;
+  const url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/scancodes';
+  ws = new WebSocket(url);
+  ws.onopen = ()=> { log('WS connected'); };
+  ws.onmessage = (e)=> {
+    try {
+      const obj = JSON.parse(e.data);
+      if (obj.type === 'bit') {
+        pushBit(obj.ts || Date.now(), obj.clk ? 1:0, obj.data ? 1:0);
+        log('bit phase:' + (obj.phase||'') + ' clk=' + obj.clk + ' data=' + obj.data);
+      } else if (obj.type === 'make' || obj.type === 'break') {
+        log(obj.type + ' ' + obj.code + ' proto=' + (obj.proto||''));
+      } else if (obj['type'] === 'host->dev') {
+        // host->dev event from xt module
+        log('HOST->DEV ' + obj.code);
+        hostEchoEl.innerText = obj.code + '\n' + hostEchoEl.innerText;
+      } else {
+        log(e.data);
+      }
+    } catch(err) {
+      log('raw: ' + e.data);
+    }
+  };
+  ws.onclose = ()=> { log('WS closed'); ws = null; };
+};
+
+document.getElementById('btnDisconnect').onclick = ()=> { if (ws){ ws.close(); ws=null; } };
+
+// detect
+document.getElementById('btnDetect').onclick = async () => {
+  detectEl.innerText = "Kör detektion…";
+  try {
+    const r = await fetch('/api/detect_protocol');
+    const j = await r.json();
+    detectEl.innerText = JSON.stringify(j, null, 2);
+  } catch(e) {
+    detectEl.innerText = "Fel vid detektion: " + e;
+  }
+};
+
+// test 'a'
+document.getElementById('btnTestA').onclick = async () => {
+  await fetch('/api/send_key', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({key:'A'})
+  });
+};
+
+// clear log
+document.getElementById('btnClearLog').onclick = ()=> { logEl.innerHTML=''; hostEchoEl.innerText='-'; samples.length=0; drawGrid(); };
+
+drawGrid();
+</script>
+</body>
+</html>

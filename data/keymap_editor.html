@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Keymap Editor — ESP32</title>
+<link rel="stylesheet" href="keymap_editor.css">
+</head>
+<body>
+<header>
+  <h1>Keymap Editor — Svensk / Avancerad</h1>
+  <div class="controls">
+    <button id="btnReload">Ladda</button>
+    <button id="btnDownload">Ladda ner JSON</button>
+    <input id="fileUp" type="file" accept="application/json" style="display:none">
+    <button id="btnUpload">Ladda upp JSON</button>
+    <button id="btnReset">Reset till standard</button>
+  </div>
+</header>
+
+<main>
+  <section class="panel">
+    <div id="mapGrid" class="grid"></div>
+  </section>
+
+  <aside class="editor">
+    <h2>Redigera tangent</h2>
+    <div class="field"><label>USB HID-kod:</label><span id="editUsb">—</span></div>
+    <div class="field"><label>Base (XT hex)</label><input id="editBase" placeholder="1C"></div>
+    <div class="field"><label>Shift (XT hex)</label><input id="editShift" placeholder="1C"></div>
+    <div class="field"><label>AltGr (XT hex)</label><input id="editAltgr" placeholder="1C"></div>
+    <div class="field"><label>Ctrl (XT hex)</label><input id="editCtrl" placeholder="1C"></div>
+    <div class="field"><label>Dead key</label><input id="editDead" type="checkbox"></div>
+
+    <div class="editor-buttons">
+      <button id="btnSave">Spara</button>
+      <button id="btnCancel">Avbryt</button>
+    </div>
+
+    <div class="help">
+      <p>Tips: Ange XT/AT-scancode i hex (t.ex. <code>1C</code> för 'a').</p>
+    </div>
+  </aside>
+</main>
+
+<footer>
+  <small>Editor kommunicerar med <code>/api/map_ex*</code> endpoints</small>
+</footer>
+
+<script src="keymap_editor.js"></script>
+</body>
+</html>
