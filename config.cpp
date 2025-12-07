@@ -5,8 +5,6 @@ static Preferences prefs;
 
 AppConfig config;
 
-// Default usb_to_xt keymap fallback (small subset) is filled by keymap.h at runtime if needed.
-
 void setDefaults() {
   config.ap_ssid = DEFAULT_AP_SSID;
   config.ap_pass = DEFAULT_AP_PASS;
@@ -17,14 +15,12 @@ void setDefaults() {
   config.ota_pass = "keyboard";
   config.ota_manifest_url = "";
   config.auto_ota_enabled = false;
-  config.auto_ota_interval_ms = 3600000UL; // 1 hour
-
-  // Initialize keymap to identity-like fallback (0x00)
+  config.auto_ota_interval_ms = 3600000UL;
   for (int i=0;i<256;i++) config.keymap[i] = 0x00;
 }
 
 void configLoad() {
-  prefs.begin("cfg", true); // read-only safe
+  prefs.begin("cfg", true);
   config.ap_ssid = prefs.getString("ap_ssid", DEFAULT_AP_SSID);
   config.ap_pass = prefs.getString("ap_pass", DEFAULT_AP_PASS);
   config.sta_ssid = prefs.getString("sta_ssid", "");
@@ -40,7 +36,6 @@ void configLoad() {
   if (len == 256) {
     prefs.getBytes("keymap", config.keymap, 256);
   } else {
-    // first-time or mismatch: fill defaults (0) - user can import or we will write default later
     for (int i=0;i<256;i++) config.keymap[i] = 0x00;
   }
   prefs.end();
