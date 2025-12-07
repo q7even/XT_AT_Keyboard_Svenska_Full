@@ -55,32 +55,20 @@ let detectEl = document.getElementById('detectResult');
 let hostEchoEl = document.getElementById('hostEcho');
 let canvas = document.getElementById('osc');
 let ctx = canvas.getContext('2d');
-
-// simple ringbuffer for plotting
 const samples = [];
 const MAX_SAMPLES = 1500;
-
-// draw grid
 function drawGrid() {
   ctx.clearRect(0,0,canvas.width,canvas.height);
   ctx.fillStyle = '#fff'; ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.strokeStyle = '#eee';
-  for (let x=0;x<canvas.width;x+=40) {
-    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
-  }
+  for (let x=0;x<canvas.width;x+=40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke(); }
   ctx.strokeStyle = '#ddd';
-  for (let y=0;y<canvas.height;y+=20) {
-    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke();
-  }
+  for (let y=0;y<canvas.height;y+=20) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke(); }
 }
-
-// map sample to canvas
 function drawSamples() {
   drawGrid();
   if (samples.length < 2) return;
-  // two channels: clock (samples[].clk), data (samples[].data)
   ctx.lineWidth = 1.5;
-  // draw clock (top)
   ctx.strokeStyle = '#ff3b30';
   ctx.beginPath();
   for (let i=0;i<samples.length;i++) {
@@ -89,7 +77,6 @@ function drawSamples() {
     if (i==0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
   }
   ctx.stroke();
-  // draw data (lower)
   ctx.strokeStyle = '#007bff';
   ctx.beginPath();
   for (let i=0;i<samples.length;i++) {
@@ -99,22 +86,14 @@ function drawSamples() {
   }
   ctx.stroke();
 }
-
-// push new bit event (from WS)
 function pushBit(ts, clk, data) {
   samples.push({ts:ts, clk:clk, data:data});
   if (samples.length > MAX_SAMPLES) samples.shift();
   drawSamples();
 }
-
-// log helper
 function log(s) {
-  const p = document.createElement('div');
-  p.innerText = new Date().toLocaleTimeString() + ' — ' + s;
-  logEl.prepend(p);
+  const p = document.createElement('div'); p.innerText = new Date().toLocaleTimeString() + ' — ' + s; logEl.prepend(p);
 }
-
-// WS connect/disconnect
 document.getElementById('btnConnect').onclick = () => {
   if (ws) return;
   const url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/scancodes';
@@ -129,43 +108,28 @@ document.getElementById('btnConnect').onclick = () => {
       } else if (obj.type === 'make' || obj.type === 'break') {
         log(obj.type + ' ' + obj.code + ' proto=' + (obj.proto||''));
       } else if (obj['type'] === 'host->dev') {
-        // host->dev event from xt module
         log('HOST->DEV ' + obj.code);
         hostEchoEl.innerText = obj.code + '\n' + hostEchoEl.innerText;
-      } else {
-        log(e.data);
-      }
-    } catch(err) {
-      log('raw: ' + e.data);
-    }
+      } else { log(e.data); }
+    } catch(err) { log('raw: ' + e.data); }
   };
   ws.onclose = ()=> { log('WS closed'); ws = null; };
 };
-
 document.getElementById('btnDisconnect').onclick = ()=> { if (ws){ ws.close(); ws=null; } };
-
-// detect
 document.getElementById('btnDetect').onclick = async () => {
   detectEl.innerText = "Kör detektion…";
   try {
     const r = await fetch('/api/detect_protocol');
     const j = await r.json();
     detectEl.innerText = JSON.stringify(j, null, 2);
-  } catch(e) {
-    detectEl.innerText = "Fel vid detektion: " + e;
-  }
+  } catch(e) { detectEl.innerText = "Fel vid detektion: " + e; }
 };
-
-// test 'a'
 document.getElementById('btnTestA').onclick = async () => {
   await fetch('/api/send_key', {
     method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({key:'A'})
   });
 };
-
-// clear log
 document.getElementById('btnClearLog').onclick = ()=> { logEl.innerHTML=''; hostEchoEl.innerText='-'; samples.length=0; drawGrid(); };
-
 drawGrid();
 </script>
 </body>

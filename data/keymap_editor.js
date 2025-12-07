@@ -1,5 +1,4 @@
-// Keymap Editor JS — talks to /api/map_ex endpoints
-let keymapEx = []; // will hold 256 objects
+let keymapEx = [];
 let selectedIndex = -1;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -8,10 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('btnUpload').addEventListener('click', ()=>document.getElementById('fileUp').click());
   document.getElementById('fileUp').addEventListener('change', uploadFile);
   document.getElementById('btnReset').addEventListener('click', resetMap);
-
   document.getElementById('btnSave').addEventListener('click', saveEntry);
   document.getElementById('btnCancel').addEventListener('click', clearEditor);
-
   buildGrid();
   loadMap();
 });
@@ -49,7 +46,6 @@ function refreshGrid(){
     const el = document.getElementById('cell-'+i);
     const entry = keymapEx[i];
     if (!entry) continue;
-    // show base code if present, else blank
     if (entry.base && entry.base !== 0) el.innerText = toHex(entry.base);
     else el.innerText = i.toString(16).toUpperCase().padStart(2,'0');
   }
@@ -64,6 +60,10 @@ function openEditor(i){
   document.getElementById('editAltgr').value = entry.altgr ? toHex(entry.altgr) : '';
   document.getElementById('editCtrl').value = entry.ctrl ? toHex(entry.ctrl) : '';
   document.getElementById('editDead').checked = !!entry.dead;
+  document.getElementById('pvBase')?.innerText = entry.base ? toHex(entry.base) : '—';
+  document.getElementById('pvShift')?.innerText = entry.shift ? toHex(entry.shift) : '—';
+  document.getElementById('pvAltgr')?.innerText = entry.altgr ? toHex(entry.altgr) : '—';
+  document.getElementById('pvCtrl')?.innerText = entry.ctrl ? toHex(entry.ctrl) : '—';
 }
 
 function clearEditor(){
@@ -76,19 +76,8 @@ function clearEditor(){
   document.getElementById('editDead').checked = false;
 }
 
-function toHex(n){
-  return n.toString(16).toUpperCase().padStart(2,'0');
-}
-
-function parseHex(s){
-  if (!s) return 0;
-  // allow "0x" prefix
-  s = s.trim();
-  if (s.startsWith('0x')||s.startsWith('0X')) s = s.slice(2);
-  const v = parseInt(s,16);
-  if (isNaN(v) || v < 0 || v > 255) return null;
-  return v;
-}
+function toHex(n){ return n.toString(16).toUpperCase().padStart(2,'0'); }
+function parseHex(s){ if (!s) return 0; s = s.trim(); if (s.startsWith('0x')||s.startsWith('0X')) s = s.slice(2); const v = parseInt(s,16); if (isNaN(v) || v < 0 || v > 255) return null; return v; }
 
 async function saveEntry(){
   if (selectedIndex < 0) { alert('Välj en tangent först'); return; }
@@ -97,26 +86,13 @@ async function saveEntry(){
   const altgr = parseHex(document.getElementById('editAltgr').value);
   const ctrl  = parseHex(document.getElementById('editCtrl').value);
   const dead  = document.getElementById('editDead').checked ? 1 : 0;
-
   if (base === null || shift === null || altgr === null || ctrl === null) {
-    alert('Fel i hexkod — använd 00–FF eller lämna fält tomt för 0');
-    return;
+    alert('Fel i hexkod — använd 00–FF eller lämna fält tomt för 0'); return;
   }
-
-  const payload = {
-    usb: selectedIndex,
-    base: base,
-    shift: shift,
-    altgr: altgr,
-    ctrl: ctrl,
-    dead: dead
-  };
-
+  const payload = { usb: selectedIndex, base: base, shift: shift, altgr: altgr, ctrl: ctrl, dead: dead };
   try {
     const r = await fetch('/api/map_ex_set', {
-      method:'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(payload)
+      method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
     });
     if (!r.ok) throw new Error('HTTP '+r.status);
     keymapEx[selectedIndex] = payload;
@@ -124,17 +100,12 @@ async function saveEntry(){
     clearEditor();
     alert('Sparat');
   } catch(e){
-    console.error(e);
-    alert('Kunde inte spara: '+e.message);
+    console.error(e); alert('Kunde inte spara: '+e.message);
   }
 }
 
-// Download current map file served by device
-function downloadMap(){
-  window.location = '/api/map_ex_download';
-}
+function downloadMap(){ window.location = '/api/map_ex_download'; }
 
-// Upload local file (user-chosen JSON)
 function uploadFile(ev){
   const f = ev.target.files[0];
   if (!f) return;
@@ -142,31 +113,14 @@ function uploadFile(ev){
   reader.onload = async () => {
     try {
       const json = JSON.parse(reader.result);
-      if (!Array.isArray(json) || json.length !== 256) {
-        alert('Filen måste vara en array med 256 objekt');
-        return;
-      }
-      // POST full array to /api/map_ex_upload
-      const r = await fetch('/api/map_ex_upload', {
-        method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(json)
-      });
+      if (!Array.isArray(json) || json.length !== 256) { alert('Filen måste vara en array med 256 objekt'); return; }
+      const r = await fetch('/api/map_ex_upload', { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(json) });
       if (!r.ok) throw new Error('HTTP '+r.status);
       alert('Upload lyckades — uppdaterar lokalt');
       loadMap();
-    } catch(e){
-      console.error(e);
-      alert('Parsing error: '+e.message);
-    }
+    } catch(e){ console.error(e); alert('Parsing error: '+e.message); }
   };
   reader.readAsText(f);
 }
 
-// Reset to default on server
-async function resetMap(){
-  if (!confirm('Vill du återställa keymap till standard?')) return;
-  const r = await fetch('/api/map_ex_reset', {method:'POST'});
-  if (r.ok) {
-    alert('Reset gjord');
-    loadMap();
-  } else alert('Reset failed: '+r.status);
-}
+async function resetMap(){ if (!confirm('Vill du återställa keymap till standard?')) return; const r = await fetch('/api/map_ex_reset', {method:'POST'}); if (r.ok) { alert('Reset gjord'); loadMap(); } else alert('Reset failed: '+r.status); }

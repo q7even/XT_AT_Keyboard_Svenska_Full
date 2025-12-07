@@ -9,7 +9,6 @@ window.onload = () => {
     buildUSBKeyList();
 };
 
-// ----------------- Firmware-version -----------------
 function loadFirmware() {
     fetch("/api/fw")
     .then(r => r.json())
@@ -18,7 +17,6 @@ function loadFirmware() {
     });
 }
 
-// ----------------- WiFi -----------------
 function loadWiFi() {
     fetch("/api/wifi")
     .then(r => r.json())
@@ -30,7 +28,6 @@ function loadWiFi() {
 function saveWiFi() {
     let ssid = document.getElementById("sta_ssid").value;
     let pass = document.getElementById("sta_pass").value;
-
     fetch("/api/wifi_set", {
         method: "POST",
         headers: {"Content-Type":"application/json"},
@@ -41,7 +38,6 @@ function saveWiFi() {
     });
 }
 
-// ----------------- XT/AT Mode -----------------
 function loadMode() {
     fetch("/api/mode")
     .then(r=>r.json())
@@ -59,7 +55,6 @@ function saveMode() {
     });
 }
 
-// ----------------- Build Keyboard -----------------
 function buildKeyboard() {
     const keys = [
         "§","1","2","3","4","5","6","7","8","9","0","+","´",
@@ -67,10 +62,8 @@ function buildKeyboard() {
         "A","S","D","F","G","H","J","K","L","Ö","Ä","'",
         "<","Z","X","C","V","B","N","M",",",".","-"," "
     ];
-
     let kbd = document.getElementById("kbd");
     kbd.innerHTML = "";
-
     keys.forEach(k => {
         let d = document.createElement("div");
         d.className = "k";
@@ -88,7 +81,6 @@ function sendKey(k) {
     });
 }
 
-// ----------------- Keymap editor -----------------
 function buildUSBKeyList() {
     let sel = document.getElementById("usbKey");
     for (let i=0;i<256;i++) {
@@ -120,7 +112,6 @@ function dumpMap() {
 function applyMap() {
     let usb = document.getElementById("usbKey").value;
     let xt  = document.getElementById("xtVal").value;
-
     fetch("/api/map_set", {
         method:"POST",
         headers:{"Content-Type":"application/json"},
